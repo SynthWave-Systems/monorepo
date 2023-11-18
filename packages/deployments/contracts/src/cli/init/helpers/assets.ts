@@ -160,12 +160,12 @@ export const setupAsset = async (args: {
     }
 
     // NOTE: it is best practice to init + add liquidity in a single transaction to start the pool in a balanced state
-    if (apply && +home.chain === 1) {
-      // TODO: add liquidity with balance assertions; proper min to mint calculations; etc.
-      // Fixing this is useful in testnet, but on mainnets youre using safes anyway.
-      console.warn(`Must implement safe pool initialization. Skipping.`);
-      continue;
-    }
+    // if (apply && +home.chain === 1) {
+    //   // TODO: add liquidity with balance assertions; proper min to mint calculations; etc.
+    //   // Fixing this is useful in testnet, but on mainnets youre using safes anyway.
+    //   console.warn(`Must implement safe pool initialization. Skipping.`);
+    //   continue;
+    // }
 
     // After registering the asset, check pool status.
     const [local, adopted] = apply
@@ -194,25 +194,27 @@ export const setupAsset = async (args: {
     const a = representation.pool?.a ?? INITIAL_A;
 
     // Initialize pool
-    await updateIfNeeded({
-      apply,
-      deployment: network.deployments.Connext,
-      desired: BigNumber.from(a),
-      read: { method: "getSwapA(bytes32)", args: [key] },
-      write: {
-        method: "initializeSwap",
-        args: [
-          key,
-          [local, adopted],
-          decimals,
-          lpTokenName,
-          lpTokenSymbol,
-          a,
-          representation.pool?.fee ?? SWAP_FEE,
-          representation.pool?.adminFee ?? ADMIN_FEE,
-        ],
-      },
-    });
+    // await updateIfNeeded({
+    //   apply,
+    //   deployment: network.deployments.Connext,
+    //   desired: BigNumber.from(a),
+    //   read: { method: "getSwapA(bytes32)", args: [key] },
+    //   write: {
+    //     method: "initializeSwap",
+    //     args: [
+    //       key,
+    //       [local, adopted],
+    //       decimals,
+    //       lpTokenName,
+    //       lpTokenSymbol,
+    //       a,
+    //       representation.pool?.fee ?? SWAP_FEE,
+    //       representation.pool?.adminFee ?? ADMIN_FEE,
+    //     ],
+    //   },
+    // });
+
+    console.log("\tInitialized pool:");
 
     // Deposit into pool in equal amounts
     const liquidity = decimals.map((decimal) =>
@@ -232,6 +234,26 @@ export const setupAsset = async (args: {
     // This is the buffer to submit the add liquidity. should be sufficient to ensure the
     // tx is fully completed. Less sensitive to front-running due to small amounts added.
     const deadlineBuffer = 2 * 24 * 60 * 60; // 2 days
+
+    console.log(
+      "\tAdding liquidity to pool:",
+      tokens[0].address,
+      tokens[1].address,
+      balances[0],
+      balances[1],
+      funded.toString(),
+    );
+
+    const txres = await tokens[0]
+      .connect(network.deployments.Connext.contract.signer)
+      .functions.approve("0xa05eF29e9aC8C75c530c2795Fa6A800e188dE0a9", balances[0]);
+
+    console.log("txres", txres);
+
+    const txres2 = await tokens[1]
+      .connect(network.deployments.Connext.contract.signer)
+      .functions.approve("0xa05eF29e9aC8C75c530c2795Fa6A800e188dE0a9", balances[1]);
+    console.log("txres2", txres2);
 
     // Add liquidity
     await updateIfNeeded({
